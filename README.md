@@ -15,8 +15,8 @@ Install the C compiler, linker and libraries.
 
 Install SDL libraries and the development package.
 
-`sudo apt-get install libsdl2-2.0`
-`sudo apt-get install libsdl2-dev`
+`sudo apt-get install libsdl2-2.0` <br />
+`sudo apt-get install libsdl2-dev` <br />
 
 Run 'make':
 

@@ -1,16 +1,22 @@
-/* tilegame --- tile-based game in SDL                             2016-12-04 */
+/* tilegame --- tile-based game in SDL                      2016-12-04 */
 
 #include <SDL2/SDL.h> 
 #include <stdio.h> 
 
 #include "CHGUK01.h"
 
-/* Screen dimension constants */
-const int SCREEN_WIDTH = 768; 
-const int SCREEN_HEIGHT = 512;
+#define UK101_NCOLS    (48)
+#define UK101_NROWS    (16)
+
+#define UK101_CHARWD   (8)
+#define UK101_CHARHT   (8)
 
 #define XSCALE (2)
 #define YSCALE (4)
+
+/* Window size */
+#define SCREEN_WIDTH   (UK101_NCOLS * UK101_CHARWD * XSCALE)
+#define SCREEN_HEIGHT  (UK101_NROWS * UK101_CHARHT * YSCALE)
 
 int CursorX = 0;
 int CursorY = 0;
@@ -30,22 +36,21 @@ int main(int argc, char *argv[])
    Uint32 white, blue, black, grey; /* Precomputed colours */
    Uint32 red, yellow, green;       /* Precomputed colours */
    Uint32 chgWhite, chgBlack;
+#if 0
    Uint32 transparent;
+#endif
    int nb;
    int jb[16];
    SDL_Rect jbut[16];
-   SDL_Rect src, dest;
-   int frame = 0;
-   short int phaseAcc = 0;
    int na;
    int ja[16];
    SDL_Rect jaxis[16], jposn[16];
    int nh;
    SDL_Event e;
    int running = 1;
-   int i, x0, y0;
+   int i;
    int hlx, hly;
-   int ch, col, bits, b, row, asc;
+   int ch, col, row;
    Uint32 rmask, gmask, bmask, amask;
 
    /* SDL interprets each pixel as a 32-bit number, so our masks must depend
@@ -136,7 +141,7 @@ int main(int argc, char *argv[])
       printf("Error: could not allocate 'pixelImage': %s.\n", SDL_GetError());
    }
 #else
-   pixelImage = SDL_CreateRGBSurface(0, 8 * XSCALE, 256 * 8 * YSCALE, screenSurface->format->BitsPerPixel,
+   pixelImage = SDL_CreateRGBSurface(0, UK101_CHARWD * XSCALE, 256 * UK101_CHARHT * YSCALE, screenSurface->format->BitsPerPixel,
                                    rmask, gmask, bmask, amask);
 
 #endif
@@ -163,13 +168,16 @@ int main(int argc, char *argv[])
    chgWhite  = SDL_MapRGB(pixelImage->format, 0xff, 0xff, 0xff);
    chgBlack  = SDL_MapRGB(pixelImage->format, 0x00, 0x00, 0x00);
    
+   /* Generate the UK101 font */
    for (ch = 0; ch < 256; ch++) {
-      for (col = 0; col < 8; col++) {
-         bits = TileGlyph[ch][col];
+      for (col = 0; col < UK101_CHARHT; col++) {
+         const int bits = TileGlyph[ch][col];
+         SDL_Rect dest;
+         int b;
          
-         for (b = 0; b < 8; b++) {
+         for (b = 0; b < UK101_CHARWD; b++) {
              dest.x = col * XSCALE;
-             dest.y = ((ch * 8) + b) * YSCALE;
+             dest.y = ((ch * UK101_CHARHT) + b) * YSCALE;
              dest.w = XSCALE;
              dest.h = YSCALE;
              
@@ -350,6 +358,7 @@ int main(int argc, char *argv[])
          }
       }
       
+#ifdef DB
       /* Fill the surface white */
       SDL_FillRect(screenSurface, NULL, white);
       
@@ -365,6 +374,7 @@ int main(int argc, char *argv[])
             SDL_FillRect(screenSurface, &jbut[i], grey);
       }
       
+      /* Display joystick axes */
       for (i = 0; i < 16; i++) {
          if (i < na) {
             SDL_FillRect(screenSurface, &jaxis[i], black);
@@ -374,22 +384,22 @@ int main(int argc, char *argv[])
          else
             SDL_FillRect(screenSurface, &jaxis[i], grey);
       }
+#endif
       
-      /* Draw some tiles */
-      frame = (phaseAcc >> 8) & 0xff;
-      phaseAcc += 16;
-      
+      /* Home cursor */
       CursorX = 0;
       CursorY = 0;
       
-      for (row = 0; row < 16; row++) {
-          for (col = 0; col < 48; col++) {
-             asc = ' ';
+      /* Clear screen */
+      for (row = 0; row < UK101_NROWS; row++) {
+          for (col = 0; col < UK101_NCOLS; col++) {
+             const int asc = ' ';
              
              drawUK101CharAt(screenSurface, asc, col, row, pixelImage);
           }
       }
 
+      /* Draw some text */
       printUK101(screenSurface, "MEMORY SIZE?", pixelImage);
       printUK101(screenSurface, "TERMINAL WIDTH?", pixelImage);
       printUK101(screenSurface, "", pixelImage);
@@ -402,15 +412,14 @@ int main(int argc, char *argv[])
       printUK101(screenSurface, "8K Basic Copyright1979", pixelImage);
       printUK101(screenSurface, "OK", pixelImage);
       
-      
+      /* Draw complete UK101 character set */
       for (row = 0; row < 16; row++) {
           for (col = 0; col < 16; col++) {
-             asc = row * 16 + col;
+             const int asc = row * 16 + col;
              
              drawUK101CharAt(screenSurface, asc, col + 32, row, pixelImage);
           }
       }
-      
 
       /* Update the surface */
       SDL_UpdateWindowSurface(window);
@@ -426,11 +435,12 @@ int main(int argc, char *argv[])
 
    SDL_JoystickClose(joystick);
    
-   /* Quit SDL subsystems */
+   /* Quit SDL subsystem */
    SDL_Quit();
 
    return (EXIT_SUCCESS);
 }
+
 
 void printUK101(const SDL_Surface *screenSurface, const char str[], const SDL_Surface *chgen)
 {
@@ -445,17 +455,18 @@ void printUK101(const SDL_Surface *screenSurface, const char str[], const SDL_Su
     CursorY++;
 }
 
+
 void drawUK101CharAt(const SDL_Surface *screenSurface, const int ch, const int col, const int row, const SDL_Surface *chgen)
 {
    SDL_Rect src, dest;
 
    src.x = 0;
-   src.y = ch * 8 * YSCALE;
-   src.w = 8 * XSCALE;
-   src.h = 8 * YSCALE;
+   src.y = ch * UK101_CHARHT * YSCALE;
+   src.w = UK101_CHARWD * XSCALE;
+   src.h = UK101_CHARHT * YSCALE;
 
-   dest.x = col * 8 * XSCALE;
-   dest.y = (SCREEN_HEIGHT - 512) + (row * 8 * YSCALE);
+   dest.x = col * UK101_CHARWD * XSCALE;
+   dest.y = (SCREEN_HEIGHT - 512) + (row * UK101_CHARHT * YSCALE);
 
    SDL_BlitSurface(chgen, &src, screenSurface, &dest);
 }

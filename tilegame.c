@@ -466,7 +466,7 @@ void drawUK101CharAt(const SDL_Surface *screenSurface, const int ch, const int c
    src.h = UK101_CHARHT * YSCALE;
 
    dest.x = col * UK101_CHARWD * XSCALE;
-   dest.y = (SCREEN_HEIGHT - 512) + (row * UK101_CHARHT * YSCALE);
+   dest.y = row * UK101_CHARHT * YSCALE;
 
    SDL_BlitSurface(chgen, &src, screenSurface, &dest);
 }
